@@ -130,6 +130,12 @@ export function ResultsView({
           </p>
         )}
         <div className="space-y-4">
+          {!unlocked && visible.length === 0 && (
+            <p className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--fg-muted)]">
+              No CRITICAL findings on this scan. Unlock Launch Pack to see the
+              full list with AI fix prompts.
+            </p>
+          )}
           {visible.map((f) => (
             <FindingCard key={f.id} finding={f} />
           ))}
