@@ -1,5 +1,7 @@
 import { getScan } from "@/lib/storage";
 
+export const maxDuration = 10;
+
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ id: string }> }

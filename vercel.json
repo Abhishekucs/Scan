@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "functions": {
+    "src/app/api/scan/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/checkout/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/checkout/confirm/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/webhook/stripe/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/badge/[id]/route.ts": {
+      "maxDuration": 10
+    }
+  }
+}

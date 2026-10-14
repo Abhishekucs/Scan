@@ -2,13 +2,12 @@ import * as cheerio from "cheerio";
 import { nanoid } from "nanoid";
 import type { Builder, ScanResult } from "../types";
 import { computeScores } from "../scoring";
+import { LIMITS } from "../limits";
 import { fetchResource, absolutize, isSameOrigin } from "./fetch";
 import { runSecurityChecks } from "./security";
 import { runSeoChecks } from "./seo";
 import { runPerformanceChecks } from "./performance";
 import { runLinkChecks } from "./links";
-
-const MAX_SCRIPTS = 20;
 
 function normalizeUrl(input: string): string {
   const trimmed = input.trim();
@@ -38,31 +37,33 @@ async function collectScriptBodies(
   const ranked = [
     ...urls.filter((u) => isSameOrigin(pageUrl, u)),
     ...urls.filter((u) => !isSameOrigin(pageUrl, u)),
-  ].slice(0, MAX_SCRIPTS);
+  ].slice(0, LIMITS.maxScripts);
 
   const bodies: string[] = [];
-  // Inline scripts
   $("script:not([src])").each((_, el) => {
     const t = $(el).html();
-    if (t && t.length < 500_000) bodies.push(t);
+    if (t && t.length < LIMITS.inlineScriptMaxChars) bodies.push(t);
   });
 
   const queue = [...ranked];
-  const workers = Array.from({ length: Math.min(6, queue.length) }, async () => {
-    while (queue.length) {
-      const url = queue.shift();
-      if (!url) return;
-      try {
-        const res = await fetchResource(url, {
-          timeoutMs: 12000,
-          maxBytes: 1_500_000,
-        });
-        if (res.ok) bodies.push(res.body);
-      } catch {
-        // ignore
+  const workers = Array.from(
+    { length: Math.min(LIMITS.scriptConcurrency, queue.length) },
+    async () => {
+      while (queue.length) {
+        const url = queue.shift();
+        if (!url) return;
+        try {
+          const res = await fetchResource(url, {
+            timeoutMs: LIMITS.scriptFetchTimeoutMs,
+            maxBytes: LIMITS.scriptMaxBytes,
+          });
+          if (res.ok) bodies.push(res.body);
+        } catch {
+          // ignore
+        }
       }
     }
-  });
+  );
   await Promise.all(workers);
 
   return { urls: ranked, bodies };
@@ -73,7 +74,10 @@ export async function runScan(opts: {
   builder: Builder;
 }): Promise<ScanResult> {
   const target = normalizeUrl(opts.url);
-  const page = await fetchResource(target, { timeoutMs: 20000, maxBytes: 2_500_000 });
+  const page = await fetchResource(target, {
+    timeoutMs: LIMITS.pageFetchTimeoutMs,
+    maxBytes: LIMITS.pageMaxBytes,
+  });
 
   if (!page.ok && page.status === 0) {
     throw new Error("Could not reach that URL");
@@ -98,7 +102,6 @@ export async function runScan(opts: {
     ...links,
   ];
 
-  // Drop pure-info "all good" noise from scoring penalties (already 0)
   const scores = computeScores(findings);
 
   return {

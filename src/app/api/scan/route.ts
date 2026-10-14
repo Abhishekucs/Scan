@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { BUILDERS } from "@/lib/types";
 import { runScan } from "@/lib/scanner";
-import { saveScan } from "@/lib/storage";
+import { saveScan, storageBackend } from "@/lib/storage";
 
+/** Keep under Vercel Pro function limit; see src/lib/limits.ts */
 export const maxDuration = 60;
 
 const bodySchema = z.object({
@@ -29,7 +30,6 @@ export async function POST(req: Request) {
 
     const { url, builder } = parsed.data;
 
-    // Block obvious non-public targets
     try {
       const u = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
       const host = u.hostname.toLowerCase();
@@ -40,7 +40,8 @@ export async function POST(req: Request) {
         host.endsWith(".local") ||
         host.startsWith("10.") ||
         host.startsWith("192.168.") ||
-        host.startsWith("169.254.")
+        host.startsWith("169.254.") ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
       ) {
         return NextResponse.json(
           { error: "Please scan a publicly reachable deployed URL." },
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
       id: scan.id,
       overall: scan.scores.overall,
       url: `/results/${scan.id}`,
+      storage: storageBackend(),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Scan failed";

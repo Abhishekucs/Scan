@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getStripe } from "@/lib/stripe";
 import { unlockScan } from "@/lib/storage";
 
+export const maxDuration = 30;
+
 const bodySchema = z.object({
   scanId: z.string().min(4),
   sessionId: z.string().min(4),

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { unlockScan } from "@/lib/storage";
 
+export const maxDuration = 30;
+
 export async function POST(req: Request) {
   const stripe = getStripe();
   const secret = process.env.STRIPE_WEBHOOK_SECRET;

@@ -1,5 +1,6 @@
 import type { Builder, Finding } from "../types";
 import { buildFixPrompt } from "../prompts";
+import { LIMITS } from "../limits";
 import type { FetchedResource } from "./fetch";
 import { fetchResource } from "./fetch";
 import {
@@ -37,8 +38,8 @@ async function checkExposedPaths(
     paths.map(async (p) => {
       try {
         const res = await fetchResource(new URL(p, origin).toString(), {
-          timeoutMs: 8000,
-          maxBytes: 50_000,
+          timeoutMs: LIMITS.probeTimeoutMs,
+          maxBytes: LIMITS.probeMaxBytes,
         });
         if (!res.ok) return;
         const looksSensitive =
@@ -89,7 +90,7 @@ async function checkSupabaseRls(
 
   try {
     const openApi = await fetchResource(`${cfg.url}/rest/v1/`, {
-      timeoutMs: 10000,
+      timeoutMs: LIMITS.probeTimeoutMs,
       maxBytes: 200_000,
     });
     // Prefer PostgREST OpenAPI via Accept header
@@ -99,7 +100,7 @@ async function checkSupabaseRls(
         Authorization: `Bearer ${cfg.anonKey}`,
         Accept: "application/openapi+json",
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(LIMITS.probeTimeoutMs),
     });
 
     let tableNames: string[] = [];
@@ -130,7 +131,7 @@ async function checkSupabaseRls(
               Authorization: `Bearer ${cfg.anonKey}`,
               Prefer: "count=exact",
             },
-            signal: AbortSignal.timeout(8000),
+            signal: AbortSignal.timeout(LIMITS.probeTimeoutMs),
           }
         );
         if (probe.status === 200) {
@@ -192,7 +193,7 @@ async function checkFirebaseOpenReads(
   if (cfg.databaseURL) {
     try {
       const res = await fetchResource(`${cfg.databaseURL}/.json?shallow=true`, {
-        timeoutMs: 8000,
+        timeoutMs: LIMITS.probeTimeoutMs,
         maxBytes: 100_000,
       });
       if (res.ok && res.body.trim() !== "null" && res.body.trim() !== "{}") {

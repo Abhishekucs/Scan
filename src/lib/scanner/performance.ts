@@ -1,5 +1,6 @@
 import type { Builder, Finding } from "../types";
 import { buildFixPrompt } from "../prompts";
+import { LIMITS } from "../limits";
 import type { FetchedResource } from "./fetch";
 
 function finding(
@@ -95,7 +96,7 @@ export async function runPerformanceChecks(opts: {
       api.searchParams.set("category", "performance");
 
       const res = await fetch(api.toString(), {
-        signal: AbortSignal.timeout(45000),
+        signal: AbortSignal.timeout(LIMITS.pagespeedTimeoutMs),
       });
       if (res.ok) {
         const json = (await res.json()) as {

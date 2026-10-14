@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import type { Builder, Finding } from "../types";
 import { buildFixPrompt } from "../prompts";
+import { LIMITS } from "../limits";
 import type { FetchedResource } from "./fetch";
 import { fetchResource, absolutize } from "./fetch";
 
@@ -160,8 +161,8 @@ export async function runSeoChecks(opts: {
   // robots.txt
   try {
     const robots = await fetchResource(`${origin}/robots.txt`, {
-      timeoutMs: 8000,
-      maxBytes: 50_000,
+      timeoutMs: LIMITS.probeTimeoutMs,
+      maxBytes: LIMITS.probeMaxBytes,
     });
     if (!robots.ok) {
       findings.push(
@@ -207,7 +208,10 @@ export async function runSeoChecks(opts: {
   let sitemapOk = false;
   for (const sm of sitemapCandidates) {
     try {
-      const res = await fetchResource(sm, { timeoutMs: 8000, maxBytes: 100_000 });
+      const res = await fetchResource(sm, {
+        timeoutMs: LIMITS.probeTimeoutMs,
+        maxBytes: 100_000,
+      });
       if (res.ok && /<urlset|<sitemapindex/i.test(res.body)) {
         sitemapOk = true;
         break;
@@ -220,14 +224,17 @@ export async function runSeoChecks(opts: {
     // also check robots for sitemap directive
     try {
       const robots = await fetchResource(`${origin}/robots.txt`, {
-        timeoutMs: 5000,
-        maxBytes: 50_000,
+        timeoutMs: LIMITS.probeTimeoutMs,
+        maxBytes: LIMITS.probeMaxBytes,
       });
       const smMatch = robots.body.match(/sitemap:\s*(\S+)/i);
       if (smMatch) {
         const abs = absolutize(origin, smMatch[1]);
         if (abs) {
-          const res = await fetchResource(abs, { timeoutMs: 8000, maxBytes: 100_000 });
+          const res = await fetchResource(abs, {
+            timeoutMs: LIMITS.probeTimeoutMs,
+            maxBytes: 100_000,
+          });
           if (res.ok) sitemapOk = true;
         }
       }

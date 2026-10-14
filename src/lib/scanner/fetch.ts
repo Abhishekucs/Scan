@@ -1,3 +1,5 @@
+import { LIMITS } from "../limits";
+
 export interface FetchedResource {
   url: string;
   finalUrl: string;
@@ -9,8 +11,8 @@ export interface FetchedResource {
   ttfbMs: number;
 }
 
-const DEFAULT_TIMEOUT_MS = 15_000;
-const MAX_BODY_BYTES = 2_500_000;
+const DEFAULT_TIMEOUT_MS = LIMITS.pageFetchTimeoutMs;
+const MAX_BODY_BYTES = LIMITS.pageMaxBytes;
 
 export async function fetchResource(
   url: string,
@@ -69,7 +71,12 @@ export function isSameOrigin(base: string, candidate: string): boolean {
 
 export function absolutize(base: string, href: string): string | null {
   try {
-    if (!href || href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:")) {
+    if (
+      !href ||
+      href.startsWith("mailto:") ||
+      href.startsWith("tel:") ||
+      href.startsWith("javascript:")
+    ) {
       return null;
     }
     return new URL(href, base).toString();

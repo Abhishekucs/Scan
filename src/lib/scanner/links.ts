@@ -1,14 +1,13 @@
 import * as cheerio from "cheerio";
 import type { Builder, Finding } from "../types";
 import { buildFixPrompt } from "../prompts";
+import { LIMITS } from "../limits";
 import {
   absolutize,
   fetchResource,
   isSameOrigin,
   type FetchedResource,
 } from "./fetch";
-
-const LINK_CAP = 30;
 
 function finding(
   builder: Builder,
@@ -50,28 +49,30 @@ export async function runLinkChecks(opts: {
     }
   });
 
-  const targets = [...hrefs].slice(0, LINK_CAP);
+  const targets = [...hrefs].slice(0, LIMITS.linkCap);
   const broken: Array<{ url: string; status: number }> = [];
 
-  // Bound concurrency
   const queue = [...targets];
-  const workers = Array.from({ length: Math.min(6, queue.length) }, async () => {
-    while (queue.length) {
-      const url = queue.shift();
-      if (!url) return;
-      try {
-        const res = await fetchResource(url, {
-          timeoutMs: 10000,
-          maxBytes: 20_000,
-        });
-        if (res.status >= 400 || res.status === 0) {
-          broken.push({ url, status: res.status });
+  const workers = Array.from(
+    { length: Math.min(LIMITS.linkConcurrency, queue.length) },
+    async () => {
+      while (queue.length) {
+        const url = queue.shift();
+        if (!url) return;
+        try {
+          const res = await fetchResource(url, {
+            timeoutMs: LIMITS.linkFetchTimeoutMs,
+            maxBytes: LIMITS.linkMaxBytes,
+          });
+          if (res.status >= 400 || res.status === 0) {
+            broken.push({ url, status: res.status });
+          }
+        } catch {
+          broken.push({ url, status: 0 });
         }
-      } catch {
-        broken.push({ url, status: 0 });
       }
     }
-  });
+  );
   await Promise.all(workers);
 
   const findings: Finding[] = [];

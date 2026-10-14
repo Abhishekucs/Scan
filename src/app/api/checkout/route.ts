@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getScan, unlockScan } from "@/lib/storage";
 import { appUrl, getStripe, stripeConfigured } from "@/lib/stripe";
 
+export const maxDuration = 30;
+
 const bodySchema = z.object({
   scanId: z.string().min(4),
   plan: z.enum(["one_off", "monitoring"]),
